@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GreenTrack · Dragon Fruit Greenhouse</title>
+<style>
+:root{--paper:#F2F6EE;--card:#FFFFFF;--ink:#16261B;--mute:#5E7064;--line:#D9E2D3;--leaf:#2E6B3C;--fruit:#C2185B;--fruit-l:#FBE4EE;--amber:#B7791F;--red:#B42318;--r:10px}
+*{box-sizing:border-box;margin:0}
+body{font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5;padding-bottom:40px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 20px;background:var(--ink);color:#E9F2E4}
+header h1{font-size:19px;letter-spacing:.02em}header h1 span{color:#F48FB1}
+.sp{flex:1}.badge{font-size:12px;padding:4px 10px;border-radius:20px;background:#33463A}
+.badge.pi{background:var(--leaf)}.badge.firebase{background:#C77700}.badge.demo{background:var(--fruit)}
+.btn.on{background:var(--fruit);border-color:var(--fruit);color:#fff}.badge.off{background:var(--red)}
+button{font:inherit;cursor:pointer}
+.btn{background:none;border:1px solid #6E8575;color:inherit;border-radius:8px;padding:6px 12px;font-size:13px}
+main{max-width:1100px;margin:0 auto;padding:18px 16px}
+h2{font-size:15px;margin:26px 0 10px}
+.note{font-size:12px;color:var(--mute)}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.big{font-size:34px;font-weight:bold;line-height:1.1}.big small{font-size:15px;color:var(--mute);font-weight:normal}
+.lbl{font-size:13px;color:var(--mute)}
+.bar{height:8px;background:var(--line);border-radius:5px;overflow:hidden;margin:6px 0 2px}
+.bar i{display:block;height:100%;background:var(--leaf);transition:width .4s}
+.bar.low i{background:var(--fruit)}
+.zone{display:grid;gap:8px}.zone .row{display:flex;justify-content:space-between;font-size:13px}
+.pill{font-size:12px;padding:2px 9px;border-radius:12px;background:var(--line)}
+.pill.on{background:var(--leaf);color:#fff}.pill.warn{background:var(--fruit-l);color:var(--fruit)}
+.dev{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dev b{flex:1;min-width:90px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:5px 11px;font-size:12px;color:var(--mute)}
+.seg button.act{background:var(--ink);color:#fff}
+.dot{width:10px;height:10px;border-radius:50%;background:#B8C4BC}.dot.on{background:var(--leaf);box-shadow:0 0 6px var(--leaf)}
+.rules{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.rules label{font-size:12px;color:var(--mute);display:block}
+.rules input,dialog input{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:7px;font:inherit}
+.save{margin-top:12px;background:var(--fruit);color:#fff;border:0;border-radius:8px;padding:8px 16px}
+canvas{width:100%;height:190px;display:block}
+.alert{padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:6px;background:var(--fruit-l);color:var(--fruit)}
+.alert.ok{background:#E3F1E5;color:var(--leaf)}
+dialog{border:1px solid var(--line);border-radius:12px;padding:20px;width:min(440px,92vw)}
+dialog::backdrop{background:rgba(22,38,27,.5)}dialog label{display:block;font-size:13px;margin:10px 0 3px}
+:focus-visible{outline:2px solid var(--fruit);outline-offset:2px}
+@media(max-width:560px){.big{font-size:28px}}
+</style></head>
+<body>
+<header>
+  <h1>Green<span>Track</span></h1><span class="note" style="color:#9DB3A4">20 dragon fruit cuttings · 2 zones</span>
+  <span class="sp"></span><span class="badge off" id="badge">CONNECTING…</span>
+  <button class="btn" id="demoBtn" onclick="toggleDemo()" aria-pressed="false">Demo mode: Off</button>
+  <button class="btn" onclick="cfgDlg.showModal()">⚙ Config</button>
+</header>
+<main>
+  <div id="alerts"></div>
+  <h2>Climate</h2>
+  <div class="grid">
+    <div class="card"><div class="lbl">Air temperature</div><div class="big" id="temp">–<small> °C</small></div></div>
+    <div class="card"><div class="lbl">Humidity</div><div class="big" id="hum">–<small> %</small></div></div>
+    <div class="card"><div class="lbl">Light</div><div class="big" id="lux">–<small> lux</small></div></div>
+    <div class="card"><div class="lbl">Water tank</div><div class="big" id="water">–<small> %</small></div><div class="bar" id="waterBar"><i></i></div></div>
+  </div>
+
+  <h2>Soil moisture by zone</h2>
+  <div class="grid" id="zones"></div>
+
+  <h2>Outputs</h2>
+  <div class="grid" id="devs"></div>
+  <p class="note" style="margin-top:6px">Auto follows the rules below. On / Off overrides one output until you set it back to Auto. The pump runs automatically whenever a valve or the mister is open.</p>
+
+  <h2>Auto rules <span class="note">(saved on the Raspberry Pi)</span></h2>
+  <div class="card"><div class="rules" id="rules"></div><button class="save" onclick="saveRules()">Save rules</button></div>
+
+  <h2>Last 24 hours</h2>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <div class="card"><div class="lbl">Temperature °C (green) · Humidity % (pink)</div><canvas id="c1"></canvas></div>
+    <div class="card"><div class="lbl">Soil moisture % — Zone 1 (green) · Zone 2 (pink)</div><canvas id="c2"></canvas></div>
+  </div>
+  <p class="note" id="histNote"></p>
+
+  <h2>Sensors</h2>
+  <div class="grid" id="sens"></div>
+</main>
+
+<dialog id="cfgDlg">
+  <h2 style="margin:0 0 4px">Connection</h2>
+  <p class="note">The dashboard tries the Raspberry Pi first, then Firebase. Settings stay in this browser.</p>
+  <label>Raspberry Pi API URL</label><input id="piUrl" placeholder="http://raspberrypi.local:3000">
+  <label>Firebase Realtime Database URL</label><input id="fbUrl" placeholder="https://your-project-default-rtdb.firebaseio.com">
+  <p class="note" id="cfgMsg" style="margin-top:10px"></p>
+  <div style="display:flex;gap:8px;margin-top:14px"><button class="save" style="margin:0" onclick="saveCfg()">Save &amp; connect</button><button class="btn" style="color:var(--ink);border-color:var(--line)" onclick="cfgDlg.close()">Close</button></div>
+</dialog>
+
+<script>
+const $=id=>document.getElementById(id);
+const DEV={pump:'Pump',valve1:'Zone 1 valve',valve2:'Zone 2 valve',fan:'Exhaust fan',mist:'Mister',light:'Grow light'};
+const RULE={soilOn:'Water when soil below (%)',soilOff:'Stop watering above (%)',waterMin:'Tank minimum (%)',maxWaterMin:'Max watering time (min)',fanOnC:'Fan on above (°C)',fanOffC:'Fan off below (°C)',mistBelowRH:'Mist when humidity below (%)',luxOn:'Grow light when lux below',lightFrom:'Light allowed from (hour)',lightTo:'Light allowed until (hour)'};
+let cfg=JSON.parse(localStorage.getItem('greentrack_cfg')||'null')||{pi:location.protocol.startsWith('http')&&location.hostname?location.origin:'http://raspberrypi.local:3000',fb:''};
+let src='off',data=JSON.parse(localStorage.getItem('greentrack_last')||'null');
+
+
+// ── Demo mode: made-up values so the dashboard works with no Pi or Firebase ──
+let demo=localStorage.getItem('greentrack_demo')==='1';
+const D={rules:{soilOn:35,soilOff:60,waterMin:15,fanOnC:33,fanOffC:30,mistBelowRH:55,luxOn:8000,lightFrom:6,lightTo:18,maxWaterMin:10},
+  mode:{pump:'auto',valve1:'auto',valve2:'auto',fan:'auto',mist:'auto',light:'auto'},out:{pump:false,valve1:false,valve2:false,fan:false,mist:false,light:false},
+  temp:31,hum:62,water:72,lock:0,soil:[48,46,41,38,44],t:0};
+const rnd=(v,a,lo,hi)=>Math.max(lo,Math.min(hi,v+(Math.random()-.5)*a));
+function demoTick(){
+  const o=D.out,r=D.rules,h=new Date().getHours()+new Date().getMinutes()/60;
+  D.t++;
+  D.temp=rnd(D.temp+(o.fan?-.25:.08)+Math.sin(D.t/40)*.08,.5,22,40);
+  D.hum=rnd(D.hum+(o.mist?1.2:-.05),1.5,35,90);
+  const lux=Math.max(0,Math.sin((h-6)/12*Math.PI))*38000*(o.light?1:.85)+(o.light?3000:0)+Math.random()*500;
+  D.soil=D.soil.map((v,i)=>rnd(v-.12+((i<2?o.valve1:i<4?o.valve2:false)&&o.pump?1.8:0),.3,5,95));
+  D.water=rnd(D.water-(o.pump?.35:0)-.01,.05,0,100);
+  if(D.water<r.waterMin){if(++D.lock>25){D.water=95;D.lock=0}}else D.lock=0;   // demo tank gets "refilled" after a short low-water lockout
+  const z=[(D.soil[0]+D.soil[1])/2,(D.soil[2]+D.soil[3])/2],want={};
+  [1,2].forEach(n=>{const k='valve'+n,s=z[n-1];want[k]=s<r.soilOn?true:s>r.soilOff?false:o[k];if(D.water<r.waterMin)want[k]=false});
+  want.fan=D.temp>r.fanOnC?true:D.temp<r.fanOffC?false:o.fan;
+  want.mist=D.hum<r.mistBelowRH&&D.temp>r.fanOnC&&D.water>=r.waterMin;
+  want.light=h>=r.lightFrom&&h<r.lightTo&&lux<r.luxOn;
+  Object.keys(want).forEach(k=>{if(D.mode[k]!=='auto')want[k]=D.mode[k]==='on'});
+  want.pump=D.mode.pump==='auto'?(want.valve1||want.valve2||want.mist):D.mode.pump==='on';
+  Object.assign(o,want);
+  const f=x=>Math.round(x*10)/10;
+  return {ts:Math.floor(Date.now()/1000),temp:f(D.temp),hum:f(D.hum),lux:Math.round(lux),water:f(D.water),soil:D.soil.map(f),zones:z.map(f),out:{...o},mode:{...D.mode},rules:{...r},sim:{dht:true,light:true,level:true,soil:true,relays:true}};
+}
+function demoHist(){
+  const n=288,now=Date.now()/1000,h=[];
+  for(let i=0;i<n;i++){const t=now-(n-i)*300,hr=new Date(t*1000).getHours();
+    h.push({ts:t,temp:28+5*Math.sin((hr-9)/24*2*Math.PI)+Math.random(),hum:68-9*Math.sin((hr-9)/24*2*Math.PI)+Math.random()*2,z1:60-((i*7)%27)+Math.random()*2,z2:58-((i*5+9)%25)+Math.random()*2})}
+  return h;
+}
+function toggleDemo(){
+  demo=!demo;localStorage.setItem('greentrack_demo',demo?'1':'0');
+  data=demo?null:JSON.parse(localStorage.getItem('greentrack_last')||'null');
+  setDemoBtn();poll();history();
+}
+function setDemoBtn(){const b=$('demoBtn');b.textContent='Demo mode: '+(demo?'On':'Off');b.classList.toggle('on',demo);b.setAttribute('aria-pressed',demo)}
+
+async function getJSON(u,ms=4000){const r=await fetch(u,{cache:'no-store',signal:AbortSignal.timeout(ms)});if(!r.ok)throw Error('HTTP '+r.status);return r.json()}
+async function poll(){
+  if(demo){src='demo';data=demoTick();render();return}
+  const pi=cfg.pi.replace(/\/+$/,''),fb=cfg.fb.replace(/\/+$/,'');
+  let d=null;
+  if(pi){try{d=await getJSON(pi+'/api/data');if(d&&d.ts)src='pi';else d=null}catch(e){}}
+  if(!d&&fb){try{d=await getJSON(fb+'/greenhouse/data.json');if(d&&d.ts)src='firebase';else d=null}catch(e){}}
+  if(d){data=d;localStorage.setItem('greentrack_last',JSON.stringify(d))}else src='off';
+  render();
+}
+function render(){
+  const stale=src!=='demo'&&data&&Date.now()/1000-data.ts>30;
+  const b=$('badge');
+  b.className='badge '+(src==='off'?'off':stale?'off':src);
+  b.textContent=src==='demo'?'DEMO · made-up values':src==='off'?(data?'OFFLINE · cached data':'NOT CONNECTED'):stale?'STALE · Pi stopped sending':src==='pi'?'LIVE · Raspberry Pi':'LIVE · Firebase';
+  if(!data){return}
+  $('temp').firstChild.nodeValue=data.temp;$('hum').firstChild.nodeValue=data.hum;
+  $('lux').firstChild.nodeValue=Math.round(data.lux);$('water').firstChild.nodeValue=data.water;
+  $('waterBar').className='bar'+(data.water<(data.rules?.waterMin??15)?' low':'');$('waterBar').firstChild.style.width=data.water+'%';
+  const r=data.rules||{soilOn:35};
+  $('zones').innerHTML=[1,2].map(z=>{const s=data.soil.slice((z-1)*2,(z-1)*2+2),avg=data.zones[z-1],low=avg<r.soilOn;
+    return `<div class="card zone"><div class="row"><b>Zone ${z} · 10 cuttings</b><span class="pill ${data.out['valve'+z]?'on':''}">${data.out['valve'+z]?'Watering':'Valve closed'}</span></div>
+    <div class="big">${avg}<small> %</small></div><div class="bar ${low?'low':''}"><i style="width:${avg}%"></i></div>
+    <div class="row note"><span>Sensor A ${s[0]}%</span><span>Sensor B ${s[1]}%</span></div></div>`}).join('');
+  $('devs').innerHTML=Object.keys(DEV).map(k=>{const m=data.mode?.[k]||'auto';
+    return `<div class="card dev"><span class="dot ${data.out[k]?'on':''}"></span><b>${DEV[k]}</b>
+    <span class="seg">${['auto','on','off'].map(x=>`<button class="${m===x?'act':''}" onclick="ctl('${k}','${x}')">${x[0].toUpperCase()+x.slice(1)}</button>`).join('')}</span></div>`}).join('');
+  if(data.rules&&!document.activeElement?.closest('#rules'))$('rules').innerHTML=Object.keys(RULE).map(k=>`<div><label>${RULE[k]}</label><input id="r_${k}" type="number" value="${data.rules[k]}"></div>`).join('');
+  const sim=data.sim||{},names={dht:'DHT22 temp/humidity',light:'BH1750 light',level:'JSN-SR04T tank level',soil:'Soil sensors (MCP3008)',relays:'Relay board'};
+  $('sens').innerHTML=Object.keys(names).map(k=>`<div class="card dev"><span class="dot ${sim[k]===false?'on':''}"></span><b>${names[k]}</b><span class="pill ${sim[k]?'warn':'on'}">${sim[k]===undefined?'unknown':sim[k]?'Simulated':'Connected'}</span></div>`).join('');
+  alerts(r);
+}
+function alerts(r){
+  const a=[];
+  if(data.temp>r.fanOnC+4)a.push(`Greenhouse is hot: ${data.temp} °C`);
+  if(data.water<r.waterMin)a.push(`Water tank is low (${data.water}%). Pump and valves are locked out until you refill it.`);
+  data.zones.forEach((z,i)=>{if(z<r.soilOn&&!data.out['valve'+(i+1)])a.push(`Zone ${i+1} soil is dry (${z}%) but the valve is closed.`)});
+  if(src==='demo')a.push('Demo mode is on. Every number here is made up. Turn it off to see the greenhouse.');
+  else if(Object.values(data.sim||{}).some(Boolean))a.push('Some sensors are simulated — the numbers are not real yet.');
+  $('alerts').innerHTML=a.length?a.map(x=>`<div class="alert">${x}</div>`).join(''):'<div class="alert ok">All readings are in range.</div>';
+}
+async function ctl(dev,mode){
+  try{
+    if(src==='demo')D.mode[dev]=mode;
+    else if(src==='pi')await fetch(cfg.pi.replace(/\/+$/,'')+'/api/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({device:dev,mode})});
+    else if(cfg.fb)await fetch(cfg.fb.replace(/\/+$/,'')+`/greenhouse/commands/${dev}.json`,{method:'PUT',body:JSON.stringify({mode,ts:Date.now()})});
+    else return alert('Not connected. Open Config and add the Pi or Firebase URL.');
+    if(src==='demo'){data=demoTick()}else if(data){data.mode[dev]=mode}
+    render();
+  }catch(e){alert('Command failed: '+e.message)}
+}
+async function saveRules(){
+  const body={};Object.keys(RULE).forEach(k=>body[k]=parseFloat($('r_'+k).value));
+  if(src==='demo'){Object.assign(D.rules,body);poll();return}
+  if(src!=='pi')return alert('Rules can only be saved while connected to the Raspberry Pi.');
+  await fetch(cfg.pi.replace(/\/+$/,'')+'/api/rules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  poll();
+}
+function chart(cv,series){
+  const c=cv.getContext('2d'),w=cv.width=cv.clientWidth*2,h=cv.height=380;c.clearRect(0,0,w,h);
+  const all=series.flatMap(s=>s.v);if(!all.length)return;
+  const lo=Math.floor(Math.min(...all)-2),hi=Math.ceil(Math.max(...all)+2);
+  c.strokeStyle='#D9E2D3';c.fillStyle='#5E7064';c.font='22px sans-serif';
+  for(let i=0;i<=3;i++){const y=20+(h-50)*i/3;c.beginPath();c.moveTo(60,y);c.lineTo(w,y);c.stroke();c.fillText(Math.round(hi-(hi-lo)*i/3),4,y+7)}
+  series.forEach(s=>{c.strokeStyle=s.c;c.lineWidth=3;c.beginPath();s.v.forEach((v,i)=>{const x=60+(w-70)*i/Math.max(1,s.v.length-1),y=20+(h-50)*(1-(v-lo)/(hi-lo));i?c.lineTo(x,y):c.moveTo(x,y)});c.stroke()});
+}
+async function history(){
+  if(demo){const h=demoHist();$('histNote').textContent='Demo trend (made up).';chart($('c1'),[{c:'#2E6B3C',v:h.map(x=>x.temp)},{c:'#C2185B',v:h.map(x=>x.hum)}]);chart($('c2'),[{c:'#2E6B3C',v:h.map(x=>x.z1)},{c:'#C2185B',v:h.map(x=>x.z2)}]);return}
+  if(src!=='pi'){$('histNote').textContent='Trends are stored on the Raspberry Pi. Connect to the Pi to see them.';return}
+  try{const h=await getJSON(cfg.pi.replace(/\/+$/,'')+'/api/history?hours=24');
+    $('histNote').textContent=h.length?h.length+' readings (one per minute).':'No history yet — the Pi saves one reading a minute.';
+    chart($('c1'),[{c:'#2E6B3C',v:h.map(x=>x.temp)},{c:'#C2185B',v:h.map(x=>x.hum)}]);
+    chart($('c2'),[{c:'#2E6B3C',v:h.map(x=>x.z1)},{c:'#C2185B',v:h.map(x=>x.z2)}]);
+  }catch(e){}
+}
+function saveCfg(){
+  cfg={pi:$('piUrl').value.trim(),fb:$('fbUrl').value.trim()};localStorage.setItem('greentrack_cfg',JSON.stringify(cfg));
+  $('cfgMsg').textContent='Saved. Connecting…';poll().then(()=>{$('cfgMsg').textContent=src==='off'?'Could not reach either source. Check the URLs and that the Pi server is running.':'Connected through '+(src==='pi'?'the Raspberry Pi':'Firebase')+'.'});
+}
+setDemoBtn();$('piUrl').value=cfg.pi;$('fbUrl').value=cfg.fb;
+if(data)render();poll();history();
+setInterval(()=>{if(demo)poll()},1000);setInterval(()=>{if(!demo)poll()},3000);setInterval(history,60000);
+</script></body></html>
